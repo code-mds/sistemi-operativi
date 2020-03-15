@@ -1,0 +1,1 @@
+gcc -m32 -mno-accumulate-outgoing-args -c -g -Wa,-ahl=main_assembly.s32 -fverbose-asm main.c
