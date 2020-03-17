@@ -16,10 +16,14 @@ void dothings() {
         exit(0);
     }
 }
-
+void cushion() {
+    char data_cushion[1000];
+    data_cushion[999] = 1; // avoid compiler optimization remove the cushion
+    dothings();
+}
 int main(){
     if(!setjmp(main_buf)) {
-        dothings();
+        cushion();
     } else {
         longjmp(dothings_buf, 17);
     }
