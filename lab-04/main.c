@@ -53,8 +53,13 @@ void yield_next_thread(int thread_idx) {
         return;
 
     thread_t * next_thread = get_next_thread();
-    if(next_thread == NULL)
-        return; // all threads completed
+    if(next_thread == NULL) {
+        // fix: *** stack smashing detected ***: <unknown> terminated
+        // return;
+
+        // no more threads to run, restore the initiator thread
+        restore_context(_threads[0].buf);
+    }
 
     if (next_thread->state == __BTHREAD_UNINITIALIZED) {
         create_cushion_and_call(next_thread);
