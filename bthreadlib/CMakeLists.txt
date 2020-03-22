@@ -5,7 +5,7 @@ set(CMAKE_C_STANDARD 99)
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}")
 
 project(bthreadlib)
-set(SOURCE_FILES tqueue.c bthread.h bthread_private.h)
+set(SOURCE_FILES tqueue.c bthread.c bthread_private.h)
 add_library(bthreadlib ${SOURCE_FILES})
 
 

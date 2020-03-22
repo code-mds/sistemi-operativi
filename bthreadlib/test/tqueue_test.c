@@ -60,21 +60,21 @@ int test_data(data_t data[], long int data_sz) {
     unsigned long int queue_sz = tqueue_size(q);
     if (queue_sz != data_sz) {
         fprintf(stderr, "FAILED: wrong queue size. expected %ld actual %ld\n", data_sz, queue_sz);
-        exit(1);
+        return (1);
     }
 
     for (int j = data_sz-1; j >= 0; --j) {
         void *val = tqueue_pop(&q);
         if (((data_t *) val) != &data[j]) {
             fprintf(stderr, "FAILED: wrong return data from pop\n");
-            exit(1);
+            return (1);
         }
     }
 
     queue_sz = tqueue_size(q);
     if (queue_sz != 0) {
         fprintf(stderr, "FAILED: wrong queue size. expected 0 actual %ld\n", queue_sz);
-        exit(1);
+        return (1);
     }
 
     fprintf(stdout, "PASSED\n");

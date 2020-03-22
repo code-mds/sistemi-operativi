@@ -19,25 +19,25 @@ TQueueNode* create_node(void* data) {
 
 /* Adds a new element at the end of the list, returns its position */
 unsigned long int tqueue_enqueue(TQueue* q, void* data) {
-    unsigned long int sz = 0;
+    unsigned long int pos = -1;
     if(q == NULL)
-        return sz;
+        return pos;
 
     TQueueNode* head = (*q);
     if(head == NULL) {
         (*q) = create_node(data);
-        sz++;
+        pos++;
     } else {
         TQueueNode *current= head;
         while(current->next != head) {
-            sz++;
+            pos++;
             current = current->next;
         }
         current->next = create_node(data);
         current->next->next = head;
-        sz++;
+        pos++;
     }
-    return sz;
+    return pos;
 }
 
 /* Removes and returns the element at the beginning of the list, NULL if the queue is empty */

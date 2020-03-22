@@ -5,7 +5,9 @@
 #ifndef TEST_C_BTHREAD_PRIVATE_H
 #define TEST_C_BTHREAD_PRIVATE_H
 
+#include <setjmp.h>
 #include "bthread.h"
+#include "tqueue.h"
 
 typedef enum {
     __BTHREAD_READY = 0,
@@ -24,5 +26,16 @@ typedef struct {
     jmp_buf context;
     void* retval;
 } __bthread_private;
+
+typedef struct {
+    TQueue queue;
+    TQueue current_item;
+    jmp_buf context;
+    bthread_t current_tid;
+} __bthread_scheduler_private;
+
+__bthread_scheduler_private* bthread_get_scheduler(); // Private
+void bthread_cleanup();
+// Private
 
 #endif //TEST_C_BTHREAD_PRIVATE_H
