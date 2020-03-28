@@ -2,7 +2,6 @@
 // Created by massi on 19.03.2020.
 //
 
-#include <stdlib.h>
 #include <stdio.h>
 #include "../tqueue.h"
 
@@ -12,29 +11,19 @@ typedef struct {
 } data_t;
 
 int test_data(data_t data[], long int data_sz);
-void test_one_element();
-void test_many_elements();
 
-void test_null();
-
-int main() {
-    test_null();
-    test_one_element();
-    test_many_elements();
-}
-
-void test_null() {
-    fprintf(stdout, "test_null ");
+void test_tqueue_null() {
+    fprintf(stdout, "test_tqueue_null ");
     tqueue_get_data(NULL);
     tqueue_pop(NULL);
     tqueue_size(NULL);
     tqueue_enqueue(NULL, NULL);
     tqueue_at_offset(NULL, 0);
-    fprintf(stdout, "PASSED\n");
+    fprintf(stdout, ": PASSED\n");
 }
 
-void test_many_elements() {
-    fprintf(stdout, "test_many_elements ");
+void test_tqueue_many_elements() {
+    fprintf(stdout, "test_tqueue_many_elements ");
     data_t data[] = {
             {"ciao", 1},
             {"pippo", 2},
@@ -44,8 +33,8 @@ void test_many_elements() {
     test_data(data, data_sz);
 }
 
-void test_one_element() {
-    fprintf(stdout, "test_one_element ");
+void test_tqueue_one_element() {
+    fprintf(stdout, "test_tqueue_one_element ");
     data_t data[] = {"ciao", 10};
     long int data_sz = sizeof(data) / sizeof(data[0]);
     test_data(data, data_sz);
@@ -77,7 +66,6 @@ int test_data(data_t data[], long int data_sz) {
         return (1);
     }
 
-    fprintf(stdout, "PASSED\n");
+    fprintf(stdout, ": PASSED\n");
     return 0;
 }
-

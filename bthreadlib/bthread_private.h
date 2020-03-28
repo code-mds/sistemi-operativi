@@ -34,7 +34,10 @@ typedef struct {
     bthread_t current_tid;
 } __bthread_scheduler_private;
 
-__bthread_scheduler_private* bthread_get_scheduler(); // Private
+// Private methods
+__bthread_scheduler_private* bthread_get_scheduler();
+static int bthread_check_if_zombie(bthread_t bthread, void **retval);
+static TQueue bthread_get_queue_at(bthread_t bthread);
 void bthread_cleanup();
 // Private
 
