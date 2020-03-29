@@ -11,7 +11,7 @@ typedef struct TQueueNode {
 } TQueueNode;
 
 TQueueNode* create_node(void* data) {
-    TQueueNode* node = malloc(sizeof(TQueue));
+    TQueueNode* node = malloc(sizeof(TQueueNode));
     node->next = node;
     node->data = data;
     return node;
