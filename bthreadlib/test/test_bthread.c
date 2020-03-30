@@ -5,21 +5,31 @@
 #include <stdlib.h>
 #include "../bthread.h"
 
-const int RETURN_VAL = 400;
-
 void* my_routine(void* param) {
-    return (void*)RETURN_VAL;
+    int p = (int)param;
+
+//    for (int i = 0; i < 5; ++i) {
+//        bthread_yield();
+//    }
+
+    return (void*)p;
 }
+
 void test_bthread_create() {
     fprintf(stdout, "test_bthread_create ");
 
     bthread_t tid[2];
     for (int i = 0; i < 2; ++i) {
-        bthread_create(&tid[i], NULL, my_routine, NULL);
+        bthread_create(&tid[i], NULL, my_routine, i);
     }
 
     for (int i = 0; i < 2; ++i) {
-        bthread_join(tid[i], NULL);
+        int retval = -1;
+        bthread_join(tid[i], (void**)&retval);
+        if(retval != tid[i]) {
+            fprintf(stderr, ": expected %i found %i FAILED\n", i, retval);
+            return;
+        }
     }
 
     fprintf(stdout, ": PASSED\n");

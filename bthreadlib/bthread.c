@@ -11,8 +11,6 @@
 #define save_context(CONTEXT) sigsetjmp(CONTEXT, 1)
 #define restore_context(CONTEXT) siglongjmp(CONTEXT, 1)
 
-static __bthread_scheduler_private * _scheduler = NULL;
-
 /*
  * Returns a "view" on the queue beginning at the node containing data for the thread identified by
  * bthread. If the queue is empty or doesn't contain the corresponding data this function returns NULL.
@@ -49,14 +47,12 @@ static TQueue bthread_get_queue_at(bthread_t bthread) {
 static int bthread_check_if_zombie(bthread_t bthread, void **retval) {
     TQueue view = bthread_get_queue_at(bthread);
     if(view == NULL || retval == NULL)
-        return 1;
+        return 0;
 
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
     if(tp->state == __BTHREAD_ZOMBIE) {
-
-        if(retval != NULL)
-            *retval = tp->retval;
+        *retval = tp->retval;
 
         free(tp->stack);
         return 1;
@@ -66,11 +62,10 @@ static int bthread_check_if_zombie(bthread_t bthread, void **retval) {
 }
 
 /*
- * free static resources
+ * clean queue for unit test
  */
 void bthread_cleanup() {
-    free(_scheduler);
-    _scheduler = NULL;
+    //TODO svuotare la coda
 }
 
 /*
@@ -80,10 +75,11 @@ void bthread_cleanup() {
  * outside the library.
  */
 __bthread_scheduler_private *bthread_get_scheduler() {
-    if(_scheduler == NULL)
-        _scheduler = malloc(sizeof(__bthread_scheduler_private));
+    static __bthread_scheduler_private * scheduler = NULL;
+    if(scheduler == NULL)
+        scheduler = malloc(sizeof(__bthread_scheduler_private));
 
-    return _scheduler;
+    return scheduler;
 }
 
 /*
@@ -175,9 +171,8 @@ void bthread_yield() {
 void bthread_exit(void *retval) {
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
-
-    //TODO
-
+    tp->retval = retval;
     tp->state = __BTHREAD_ZOMBIE;
+    restore_context(scheduler->context);
 }
 
