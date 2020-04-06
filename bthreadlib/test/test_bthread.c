@@ -8,9 +8,10 @@
 void* my_routine(void* param) {
     int p = (int)param;
 
-//    for (int i = 0; i < 5; ++i) {
-//        bthread_yield();
-//    }
+    for (int i = 0; i < 5; ++i) {
+        fprintf(stdout, "thread %d  -> %d\n", p, i);
+        bthread_yield();
+    }
 
     return (void*)p;
 }
@@ -21,6 +22,7 @@ void test_bthread_create() {
     bthread_t tid[2];
     for (int i = 0; i < 2; ++i) {
         bthread_create(&tid[i], NULL, my_routine, i);
+        fprintf(stdout, "thread %d created\n", tid[i]);
     }
 
     for (int i = 0; i < 2; ++i) {

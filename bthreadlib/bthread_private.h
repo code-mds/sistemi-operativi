@@ -25,6 +25,8 @@ typedef struct {
     char* stack;
     jmp_buf context;
     void* retval;
+    double wake_up_time;
+    int cancel_req;
 } __bthread_private;
 
 typedef struct {

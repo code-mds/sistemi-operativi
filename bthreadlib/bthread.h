@@ -19,5 +19,8 @@ int bthread_create(bthread_t *bthread,
 int bthread_join(bthread_t bthread, void **retval);
 void bthread_yield();
 void bthread_exit(void *retval);
+void bthread_sleep(double ms);
+void bthread_cancel(bthread_t bthread);
+void bthread_testcancel();
 
 #endif //TEST_C_BTHREAD_H

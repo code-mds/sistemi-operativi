@@ -4,12 +4,24 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <sys/time.h>
+#include <stdio.h>
 #include "bthread.h"
 #include "bthread_private.h"
 
 #define STACK_SIZE  100000
 #define save_context(CONTEXT) sigsetjmp(CONTEXT, 1)
 #define restore_context(CONTEXT) siglongjmp(CONTEXT, 1)
+#define bthread_printf(...) \
+    printf(__VA_ARGS__); \
+    bthread_yield();
+
+double get_current_time_millis()
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+}
 
 /*
  * Returns a "view" on the queue beginning at the node containing data for the thread identified by
@@ -95,6 +107,8 @@ int bthread_create(bthread_t *bthread, const bthread_attr_t *attr, void *(*start
     thread->body = start_routine;
     thread->state = __BTHREAD_READY;
     thread->stack = NULL;
+    thread->wake_up_time = 0;
+    thread->cancel_req = 0;
 
     //TODO
     //thread->attr = *attr;
@@ -119,12 +133,21 @@ int bthread_join(bthread_t bthread, void **retval) {
     do {
         scheduler->current_item = tqueue_at_offset(scheduler->current_item, 1);
         tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
+        //fprintf(stdout, "JOIN: tid: %d  state: %d\n", tp->tid, tp->state);
+        // check sleeping threads
+//        double now = get_current_time_millis();
+//        if(tp->state == __BTHREAD_SLEEPING && now > tp->wake_up_time)
+//            tp->state = __BTHREAD_READY;
+
     } while (tp->state != __BTHREAD_READY);
+
 
     if (tp->stack) {
         // stack already initialized
         restore_context(tp->context);
     } else {
+        fprintf(stdout, "JOIN: tid: %d  create STACK: %d\n", tp->tid, tp->state);
+
         // setup a new stack (allocating memory on the heap)
         tp->stack = (char*) malloc(sizeof(char) * STACK_SIZE);
         unsigned long target = tp->stack + STACK_SIZE - 1;
@@ -176,3 +199,21 @@ void bthread_exit(void *retval) {
     restore_context(scheduler->context);
 }
 
+/**
+ * The ms parameter specifies the number of milliseconds the thread must sleep.
+ */
+void bthread_sleep(double ms) {
+    volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
+    __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
+    tp->state = __BTHREAD_SLEEPING;
+    tp->wake_up_time = get_current_time_millis() + ms;
+    restore_context(scheduler->context);
+}
+
+void bthread_cancel(bthread_t bthread) {
+
+}
+
+void bthread_testcancel() {
+    bthread_exit(-1);
+}

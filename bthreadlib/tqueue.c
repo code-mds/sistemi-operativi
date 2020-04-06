@@ -19,14 +19,13 @@ TQueueNode* create_node(void* data) {
 
 /* Adds a new element at the end of the list, returns its position */
 unsigned long int tqueue_enqueue(TQueue* q, void* data) {
-    unsigned long int pos = -1;
+    unsigned long int pos = 0;
     if(q == NULL)
         return pos;
 
     TQueueNode* head = (*q);
     if(head == NULL) {
         (*q) = create_node(data);
-        pos++;
     } else {
         TQueueNode *current= head;
         while(current->next != head) {
