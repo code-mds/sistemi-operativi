@@ -88,8 +88,12 @@ void bthread_cleanup() {
  */
 __bthread_scheduler_private *bthread_get_scheduler() {
     static __bthread_scheduler_private * scheduler = NULL;
-    if(scheduler == NULL)
+    if(scheduler == NULL) {
         scheduler = malloc(sizeof(__bthread_scheduler_private));
+        scheduler->current_item = NULL;
+        scheduler->queue = NULL;
+        scheduler->current_tid = 0;
+    }
 
     return scheduler;
 }
@@ -109,11 +113,8 @@ int bthread_create(bthread_t *bthread, const bthread_attr_t *attr, void *(*start
     thread->stack = NULL;
     thread->wake_up_time = 0;
     thread->cancel_req = 0;
-
-    //TODO
     //thread->attr = *attr;
-    //thread->arg =
-    //thread->retval =
+    thread->arg = arg;
 
     return 0;
 }
@@ -146,8 +147,6 @@ int bthread_join(bthread_t bthread, void **retval) {
         // stack already initialized
         restore_context(tp->context);
     } else {
-        fprintf(stdout, "JOIN: tid: %d  create STACK: %d\n", tp->tid, tp->state);
-
         // setup a new stack (allocating memory on the heap)
         tp->stack = (char*) malloc(sizeof(char) * STACK_SIZE);
         unsigned long target = tp->stack + STACK_SIZE - 1;
@@ -180,10 +179,11 @@ void bthread_yield() {
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     // save current thread context: sigsetjmp
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
-    save_context(tp->context);
-
-    // restore scheduler context: siglongjmp
-    restore_context(scheduler->context);
+    if (save_context(tp->context)) {
+        //fprintf(stdout, "YIELD: tid: %d  state: %d\n", tp->tid, tp->state);
+        // restore scheduler context: siglongjmp
+        restore_context(scheduler->context);
+    }
 }
 
 /*
