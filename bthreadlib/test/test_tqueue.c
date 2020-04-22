@@ -52,9 +52,9 @@ int test_data(data_t data[], long int data_sz) {
         return (1);
     }
 
-    for (int j = data_sz-1; j >= 0; --j) {
+    for (int i = 0; i < data_sz; ++i) {
         void *val = tqueue_pop(&q);
-        if (((data_t *) val) != &data[j]) {
+        if (((data_t *) val) != &data[i]) {
             fprintf(stderr, "FAILED: wrong return data from pop\n");
             return (1);
         }

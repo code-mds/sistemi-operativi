@@ -47,19 +47,21 @@ void* tqueue_pop(TQueue* q) {
     TQueueNode* head = (*q);
     void* data = NULL;
     if(head != NULL) {
-        TQueueNode *prev= head;
-        TQueueNode *current= prev->next;
-        if(prev != current) {
+        data = head->data;
+        if(head == head->next) {
+            // single node in queue
+            *q = NULL;
+        } else {
+            TQueueNode *current = head;
+            // search previous node
             while(current->next != head) {
-                prev = current;
                 current = current->next;
             }
-            prev->next = head;
-        } else {
-            *q = NULL;
+            // bypass head
+            current->next = head->next;
+            *q = current->next;
         }
-        data = current->data;
-        free(current);
+        free(head);
     }
     return data;
 }

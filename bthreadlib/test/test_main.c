@@ -8,9 +8,9 @@
 int main() {
     // tqueue tests
     fprintf(stdout, "\nSTART tqueue tests\n");
-//    test_tqueue_null();
-//    test_tqueue_one_element();
-//    test_tqueue_many_elements();
+    test_tqueue_null();
+    test_tqueue_one_element();
+    test_tqueue_many_elements();
 
     // bthread tests
     fprintf(stdout, "\nSTART bthread tests\n");
