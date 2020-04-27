@@ -64,7 +64,7 @@ static int bthread_check_if_zombie(bthread_t bthread, void **retval) {
             if (retval != NULL)
                 *retval = tp->retval;
 
-            //tp->state = __BTHREAD_EXIT;
+            tp->state = __BTHREAD_EXIT;
             if(tp->stack) {
                 free(tp->stack);
                 tp->stack = NULL;
@@ -185,7 +185,7 @@ void bthread_yield() {
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     // save current thread context: sigsetjmp
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
-    if (save_context(tp->context)) {
+    if (!save_context(tp->context)) {
         fprintf(stdout, "YIELD: tid: %lu  state: %d\n", tp->tid, tp->state);
         // restore scheduler context: siglongjmp
         restore_context(scheduler->context);

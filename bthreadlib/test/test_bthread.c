@@ -3,7 +3,7 @@
 //
 #include <stdio.h>
 #include "../bthread.h"
-#define THREADS 2
+#define THREADS 3
 
 void* my_routine(void* param) {
     int loops = (int)param;
@@ -20,7 +20,7 @@ void test_bthread_create() {
     fprintf(stdout, "** test_bthread_create **\n");
 
     bthread_t tid[THREADS];
-    int loops[THREADS] = {2, 3};
+    int loops[THREADS] = {10, 5, 8};
 
     for (int i = 0; i < THREADS; ++i) {
         bthread_create(&tid[i], NULL, my_routine, (void*)loops[i]);
@@ -32,10 +32,10 @@ void test_bthread_create() {
         int retval = -1;
         fprintf(stdout, "%d) thread_%lu join, # of loops: %d \n", i, tid[i], loops[i]);
         bthread_join(tid[i], (void**)&retval);
-//        if(loops[i] != retval) {
-//            fprintf(stderr, "test FAILED %d != %d \n", loops[i], retval);
-//            failed = 1;
-//        }
+        if(loops[i] != retval) {
+            fprintf(stderr, "test FAILED %d != %d \n", loops[i], retval);
+            failed = 1;
+        }
     }
 
     if(!failed)
