@@ -2,25 +2,24 @@
 // Created by massi on 22.03.2020.
 //
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/time.h>
-#include <stdio.h>
 #include "bthread.h"
 #include "bthread_private.h"
 
 #define STACK_SIZE  100000
 #define save_context(CONTEXT) sigsetjmp(CONTEXT, 1)
 #define restore_context(CONTEXT) siglongjmp(CONTEXT, 1)
-#define bthread_printf(...) \
-    printf(__VA_ARGS__); \
-    bthread_yield();
+//#define save_context(CONTEXT) setjmp(CONTEXT)
+//#define restore_context(CONTEXT) longjmp(CONTEXT, 1)
 
 double get_current_time_millis()
 {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    return (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+    return tv.tv_sec * 1000 + tv.tv_usec / 1000 ;
 }
 
 /*
@@ -58,19 +57,25 @@ static TQueue bthread_get_queue_at(bthread_t bthread) {
  */
 static int bthread_check_if_zombie(bthread_t bthread, void **retval) {
     TQueue view = bthread_get_queue_at(bthread);
-    if(view == NULL || retval == NULL)
-        return 0;
+    int status = 0;
+    if(view != NULL) {
+        __bthread_private *tp = (__bthread_private *) tqueue_get_data(view);
+        if (tp->state == __BTHREAD_ZOMBIE) {
+            if (retval != NULL)
+                *retval = tp->retval;
 
-    volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
-    __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
-    if(tp->state == __BTHREAD_ZOMBIE) {
-        *retval = tp->retval;
+            //tp->state = __BTHREAD_EXIT;
+            if(tp->stack) {
+                free(tp->stack);
+                tp->stack = NULL;
+            }
 
-        free(tp->stack);
-        return 1;
+            status = 1;
+        } else if(tp->state == __BTHREAD_EXIT)
+            status = 1;
     }
 
-    return 0;
+    return status;
 }
 
 /*
@@ -132,6 +137,7 @@ int bthread_join(bthread_t bthread, void **retval) {
 
     __bthread_private* tp;
     do {
+        // update current_item with the next item
         scheduler->current_item = tqueue_at_offset(scheduler->current_item, 1);
         tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
         //fprintf(stdout, "JOIN: tid: %d  state: %d\n", tp->tid, tp->state);
@@ -180,7 +186,7 @@ void bthread_yield() {
     // save current thread context: sigsetjmp
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
     if (save_context(tp->context)) {
-        //fprintf(stdout, "YIELD: tid: %d  state: %d\n", tp->tid, tp->state);
+        fprintf(stdout, "YIELD: tid: %lu  state: %d\n", tp->tid, tp->state);
         // restore scheduler context: siglongjmp
         restore_context(scheduler->context);
     }
@@ -215,5 +221,5 @@ void bthread_cancel(bthread_t bthread) {
 }
 
 void bthread_testcancel() {
-    bthread_exit(-1);
+    bthread_exit((void*)-1);
 }

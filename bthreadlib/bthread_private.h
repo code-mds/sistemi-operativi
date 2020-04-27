@@ -13,7 +13,8 @@ typedef enum {
     __BTHREAD_READY = 0,
     __BTHREAD_BLOCKED,
     __BTHREAD_SLEEPING,
-    __BTHREAD_ZOMBIE
+    __BTHREAD_ZOMBIE,
+    __BTHREAD_EXIT
 } bthread_state;
 
 typedef struct {
