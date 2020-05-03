@@ -12,8 +12,6 @@
 #define STACK_SIZE  100000
 #define save_context(CONTEXT) sigsetjmp(CONTEXT, 1)
 #define restore_context(CONTEXT) siglongjmp(CONTEXT, 1)
-//#define save_context(CONTEXT) setjmp(CONTEXT)
-//#define restore_context(CONTEXT) longjmp(CONTEXT, 1)
 
 double get_current_time_millis()
 {
@@ -118,7 +116,7 @@ int bthread_create(bthread_t *bthread, const bthread_attr_t *attr, void *(*start
     thread->stack = NULL;
     thread->wake_up_time = 0;
     thread->cancel_req = 0;
-    //thread->attr = *attr;
+//    thread->attr = *attr;
     thread->arg = arg;
 
     return 0;
@@ -142,9 +140,9 @@ int bthread_join(bthread_t bthread, void **retval) {
         tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
         //fprintf(stdout, "JOIN: tid: %d  state: %d\n", tp->tid, tp->state);
         // check sleeping threads
-//        double now = get_current_time_millis();
-//        if(tp->state == __BTHREAD_SLEEPING && now > tp->wake_up_time)
-//            tp->state = __BTHREAD_READY;
+        double now = get_current_time_millis();
+        if(tp->state == __BTHREAD_SLEEPING && now > tp->wake_up_time)
+            tp->state = __BTHREAD_READY;
 
     } while (tp->state != __BTHREAD_READY);
 
@@ -213,7 +211,11 @@ void bthread_sleep(double ms) {
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
     tp->state = __BTHREAD_SLEEPING;
     tp->wake_up_time = get_current_time_millis() + ms;
-    restore_context(scheduler->context);
+    if (!save_context(tp->context)) {
+        fprintf(stdout, "SLEEP: tid: %lu  state: %d\n", tp->tid, tp->state);
+        // restore scheduler context: siglongjmp
+        restore_context(scheduler->context);
+    }
 }
 
 void bthread_cancel(bthread_t bthread) {

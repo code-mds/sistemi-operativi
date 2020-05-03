@@ -9,6 +9,7 @@ void* my_routine(void* param) {
     int loops = (int)param;
     int i=0;
     for (i = 0; i < loops; ++i) {
+        bthread_sleep(200);
         fprintf(stdout, "thread [%d]  -> %d\n", loops, i);
         bthread_yield();
     }
