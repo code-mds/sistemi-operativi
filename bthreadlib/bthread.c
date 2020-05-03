@@ -219,9 +219,19 @@ void bthread_sleep(double ms) {
 }
 
 void bthread_cancel(bthread_t bthread) {
-
+    TQueue view = bthread_get_queue_at(bthread);
+    if(view != NULL) {
+        __bthread_private *tp = (__bthread_private *) tqueue_get_data(view);
+        tp->cancel_req = 1;
+        fprintf(stdout, "bthread_cancel: tid: %lu  state: %d\n", tp->tid, tp->state);
+    }
 }
 
 void bthread_testcancel() {
-    bthread_exit((void*)-1);
+    volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
+    __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
+    if(tp->cancel_req) {
+        fprintf(stdout, "bthread_testcancel: tid: %lu  state: %d\n", tp->tid, tp->state);
+        bthread_exit((void *) -1);
+    }
 }
