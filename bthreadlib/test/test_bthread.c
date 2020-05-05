@@ -7,16 +7,17 @@
 
 void* my_routine(void* param) {
     int loops = (int)param;
-    int i=0;
+    int i=0, c;
     for (; i < loops; ++i) {
-        bthread_testcancel();
-        bthread_sleep(100);
-        fprintf(stdout, "thread [%d]  -> %d\n", loops, i);
-        bthread_yield();
+//        bthread_testcancel();
+//        bthread_sleep(100);
+//        fprintf(stdout, "thread [%d]  -> %d\n", loops, i);
+//        bthread_yield();
+        c=i;
     }
 
     // stop first thread
-    bthread_cancel(0);
+//    bthread_cancel(0);
 
     return (void*)i;
 }
@@ -25,7 +26,7 @@ void test_bthread_create() {
     fprintf(stdout, "** test_bthread_create **\n");
 
     bthread_t tid[THREADS];
-    int loops[THREADS] = {10, 5, 6};
+    int loops[THREADS] = {1000000, 2000000, 3000000};
 
     for (int i = 0; i < THREADS; ++i) {
         bthread_create(&tid[i], NULL, my_routine, (void*)loops[i]);
@@ -46,4 +47,3 @@ void test_bthread_create() {
     if(!failed)
         fprintf(stdout, "test PASSED\n");
 }
-

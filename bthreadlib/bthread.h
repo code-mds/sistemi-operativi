@@ -22,5 +22,5 @@ void bthread_exit(void *retval);
 void bthread_sleep(double ms);
 void bthread_cancel(bthread_t bthread);
 void bthread_testcancel();
-
+void bthread_printf(const char* format, ...);
 #endif //TEST_C_BTHREAD_H

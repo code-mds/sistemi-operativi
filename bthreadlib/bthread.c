@@ -4,8 +4,11 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <sys/time.h>
+#include <stdbool.h>
+#include <signal.h>
 #include "bthread.h"
 #include "bthread_private.h"
 
@@ -13,11 +16,45 @@
 #define save_context(CONTEXT) sigsetjmp(CONTEXT, 1)
 #define restore_context(CONTEXT) siglongjmp(CONTEXT, 1)
 
+// 100 ms
+#define QUANTUM_USEC 1000
+
 double get_current_time_millis()
 {
     struct timeval tv;
     gettimeofday(&tv, NULL);
     return tv.tv_sec * 1000 + tv.tv_usec / 1000 ;
+}
+
+static void bthread_setup_timer() {
+    static bool initialized = false;
+
+    if (!initialized) {
+        signal(SIGALRM, (void (*)()) bthread_yield);
+        //signal(SIGVTALRM, (void (*)()) bthread_yield);
+        struct itimerval time;
+        time.it_interval.tv_sec = 0;
+        time.it_interval.tv_usec = QUANTUM_USEC;
+        time.it_value.tv_sec = 0;
+        time.it_value.tv_usec = QUANTUM_USEC;
+        initialized = true;
+//        setitimer(ITIMER_VIRTUAL, &time, NULL);
+        setitimer(ITIMER_REAL, &time, NULL);
+    }
+}
+
+void bthread_block_timer_signal(){
+    sigset_t signalset;
+    sigemptyset(&signalset);
+    sigaddset(&signalset, SIGVTALRM);
+    sigprocmask(SIG_BLOCK, &signalset, NULL);
+}
+
+void bthread_unblock_timer_signal() {
+    sigset_t signalset;
+    sigemptyset(&signalset);
+    sigaddset(&signalset, SIGVTALRM);
+    sigprocmask(SIG_UNBLOCK, &signalset, NULL);
 }
 
 /*
@@ -127,18 +164,25 @@ int bthread_create(bthread_t *bthread, const bthread_attr_t *attr, void *(*start
  *  scheduling all the threads. In the following we will discuss some details about this procedure.
  */
 int bthread_join(bthread_t bthread, void **retval) {
+    bthread_setup_timer();
+
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     scheduler->current_item = scheduler->queue;
+
     save_context(scheduler->context);
-    if (bthread_check_if_zombie(bthread, retval))
+
+    bthread_block_timer_signal();
+    if (bthread_check_if_zombie(bthread, retval)) {
+        bthread_unblock_timer_signal();
         return 0;
+    }
 
     __bthread_private* tp;
     do {
         // update current_item with the next item
         scheduler->current_item = tqueue_at_offset(scheduler->current_item, 1);
         tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
-        //fprintf(stdout, "JOIN: tid: %d  state: %d\n", tp->tid, tp->state);
+//        bthread_printf( "JOIN: tid: %d  state: %d\n", tp->tid, tp->state);
         // check sleeping threads
         double now = get_current_time_millis();
         if(tp->state == __BTHREAD_SLEEPING && now > tp->wake_up_time)
@@ -148,6 +192,7 @@ int bthread_join(bthread_t bthread, void **retval) {
 
 
     if (tp->stack) {
+        bthread_unblock_timer_signal();
         // stack already initialized
         restore_context(tp->context);
     } else {
@@ -166,9 +211,11 @@ int bthread_join(bthread_t bthread, void **retval) {
             asm __volatile__("movl %0, %%esp" :: "r"((intptr_t) target));
         #endif
 
+        bthread_unblock_timer_signal();
         // call the thread's routine (tp->body: void* f(void*) )
         bthread_exit(tp->body(tp->arg));
     }
+    bthread_unblock_timer_signal();
     return 0;
 }
 
@@ -180,14 +227,18 @@ int bthread_join(bthread_t bthread, void **retval) {
  * for implementing preemption.
  */
 void bthread_yield() {
+    bthread_block_timer_signal();
+
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     // save current thread context: sigsetjmp
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
     if (!save_context(tp->context)) {
-        fprintf(stdout, "YIELD: tid: %lu  state: %d\n", tp->tid, tp->state);
+        bthread_printf( "YIELD: tid: %lu  state: %d\n", tp->tid, tp->state);
         // restore scheduler context: siglongjmp
         restore_context(scheduler->context);
     }
+
+    bthread_unblock_timer_signal();
 }
 
 /*
@@ -196,6 +247,7 @@ void bthread_yield() {
  * bthread_exit and the corresponding bthread_join the thread stays in the __BTHREAD_ZOMBIE state.
  */
 void bthread_exit(void *retval) {
+    bthread_block_timer_signal();
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
     tp->retval = retval;
@@ -211,11 +263,13 @@ void bthread_sleep(double ms) {
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
     tp->state = __BTHREAD_SLEEPING;
     tp->wake_up_time = get_current_time_millis() + ms;
+    bthread_block_timer_signal();
     if (!save_context(tp->context)) {
-        fprintf(stdout, "SLEEP: tid: %lu  state: %d\n", tp->tid, tp->state);
+        bthread_printf( "SLEEP: tid: %lu  state: %d\n", tp->tid, tp->state);
         // restore scheduler context: siglongjmp
         restore_context(scheduler->context);
     }
+    bthread_unblock_timer_signal();
 }
 
 void bthread_cancel(bthread_t bthread) {
@@ -223,7 +277,7 @@ void bthread_cancel(bthread_t bthread) {
     if(view != NULL) {
         __bthread_private *tp = (__bthread_private *) tqueue_get_data(view);
         tp->cancel_req = 1;
-        fprintf(stdout, "bthread_cancel: tid: %lu  state: %d\n", tp->tid, tp->state);
+        bthread_printf( "bthread_cancel: tid: %lu  state: %d\n", tp->tid, tp->state);
     }
 }
 
@@ -231,7 +285,17 @@ void bthread_testcancel() {
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
     if(tp->cancel_req) {
-        fprintf(stdout, "bthread_testcancel: tid: %lu  state: %d\n", tp->tid, tp->state);
+        bthread_printf( "bthread_testcancel: tid: %lu  state: %d\n", tp->tid, tp->state);
         bthread_exit((void *) -1);
     }
+}
+
+void bthread_printf(const char* format, ...) // requires stdlib.h and stdarg.h
+{
+    bthread_block_timer_signal();
+    va_list args;
+    va_start (args, format);
+    vprintf (format, args);
+    va_end (args);
+    bthread_unblock_timer_signal();
 }
