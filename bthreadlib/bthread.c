@@ -16,8 +16,17 @@
 #define save_context(CONTEXT) sigsetjmp(CONTEXT, 1)
 #define restore_context(CONTEXT) siglongjmp(CONTEXT, 1)
 
-// 100 ms
-#define QUANTUM_USEC 1000
+// 2 ms
+#define QUANTUM_USEC 2000
+void error(char* error_message) {
+    perror(error_message);
+    exit(1);
+}
+void check(int result, char* error_message) {
+    if (result != 0) {
+        error(error_message);
+    }
+}
 
 double get_current_time_millis()
 {
@@ -30,31 +39,47 @@ static void bthread_setup_timer() {
     static bool initialized = false;
 
     if (!initialized) {
+
+//        struct sigaction action;            // Allocate struct on stack.
+//        action.sa_handler = bthread_yield;  // Set the function pointer our handler.
+//        action.sa_flags = 0;                // Use no special flags.
+//        sigfillset(&action.sa_mask);        // Again, full set of signals blocked while this
+//                                            // handler runs
+//
+//        // Register to handle SIGALRM signals.
+//        check(sigaction(SIGALRM, &action, NULL), "Failed to setup signal handler");
+
         signal(SIGALRM, (void (*)()) bthread_yield);
         //signal(SIGVTALRM, (void (*)()) bthread_yield);
+
         struct itimerval time;
-        time.it_interval.tv_sec = 0;
-        time.it_interval.tv_usec = QUANTUM_USEC;
+        time.it_interval.tv_sec = 0;                // seconds
+        time.it_interval.tv_usec = QUANTUM_USEC;    // microseconds
         time.it_value.tv_sec = 0;
         time.it_value.tv_usec = QUANTUM_USEC;
         initialized = true;
+
+        // Now start the timer.
+        // ITIMER_REAL means base the timer on real ellapsed
 //        setitimer(ITIMER_VIRTUAL, &time, NULL);
-        setitimer(ITIMER_REAL, &time, NULL);
+        check(setitimer(ITIMER_REAL, &time, NULL), "unable to set timer");
     }
 }
 
 void bthread_block_timer_signal(){
     sigset_t signalset;
     sigemptyset(&signalset);
-    sigaddset(&signalset, SIGVTALRM);
-    sigprocmask(SIG_BLOCK, &signalset, NULL);
+//    sigaddset(&signalset,  SIGVTALRM);
+    sigaddset(&signalset,  SIGALRM);
+    check(sigprocmask(SIG_BLOCK, &signalset, NULL), "unable to block SIGALRM");
 }
 
 void bthread_unblock_timer_signal() {
     sigset_t signalset;
     sigemptyset(&signalset);
-    sigaddset(&signalset, SIGVTALRM);
-    sigprocmask(SIG_UNBLOCK, &signalset, NULL);
+//    sigaddset(&signalset, SIGVTALRM);
+    sigaddset(&signalset,  SIGALRM);
+    check(sigprocmask(SIG_UNBLOCK, &signalset, NULL), "unable to unblock SIGALRM");
 }
 
 /*
@@ -233,8 +258,9 @@ void bthread_yield() {
     // save current thread context: sigsetjmp
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
     if (!save_context(tp->context)) {
-        bthread_printf( "YIELD: tid: %lu  state: %d\n", tp->tid, tp->state);
+//        bthread_printf( "YIELD: tid: %lu  state: %d\n", tp->tid, tp->state);
         // restore scheduler context: siglongjmp
+        bthread_block_timer_signal();
         restore_context(scheduler->context);
     }
 
@@ -248,6 +274,7 @@ void bthread_yield() {
  */
 void bthread_exit(void *retval) {
     bthread_block_timer_signal();
+
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
     tp->retval = retval;
@@ -259,43 +286,56 @@ void bthread_exit(void *retval) {
  * The ms parameter specifies the number of milliseconds the thread must sleep.
  */
 void bthread_sleep(double ms) {
+    bthread_block_timer_signal();
+
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
     tp->state = __BTHREAD_SLEEPING;
     tp->wake_up_time = get_current_time_millis() + ms;
-    bthread_block_timer_signal();
     if (!save_context(tp->context)) {
-        bthread_printf( "SLEEP: tid: %lu  state: %d\n", tp->tid, tp->state);
+//        bthread_printf( "SLEEP: tid: %lu  state: %d\n", tp->tid, tp->state);
         // restore scheduler context: siglongjmp
+        bthread_block_timer_signal();
         restore_context(scheduler->context);
     }
+
     bthread_unblock_timer_signal();
 }
 
 void bthread_cancel(bthread_t bthread) {
+    bthread_block_timer_signal();
+
     TQueue view = bthread_get_queue_at(bthread);
     if(view != NULL) {
         __bthread_private *tp = (__bthread_private *) tqueue_get_data(view);
         tp->cancel_req = 1;
-        bthread_printf( "bthread_cancel: tid: %lu  state: %d\n", tp->tid, tp->state);
+//        bthread_printf( "bthread_cancel: tid: %lu  state: %d\n", tp->tid, tp->state);
     }
+
+    bthread_unblock_timer_signal();
 }
 
 void bthread_testcancel() {
+    bthread_block_timer_signal();
+
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
     if(tp->cancel_req) {
-        bthread_printf( "bthread_testcancel: tid: %lu  state: %d\n", tp->tid, tp->state);
+//        bthread_printf( "bthread_testcancel: tid: %lu  state: %d\n", tp->tid, tp->state);
         bthread_exit((void *) -1);
     }
+
+    bthread_unblock_timer_signal();
 }
 
 void bthread_printf(const char* format, ...) // requires stdlib.h and stdarg.h
 {
     bthread_block_timer_signal();
+
     va_list args;
     va_start (args, format);
     vprintf (format, args);
     va_end (args);
+
     bthread_unblock_timer_signal();
 }

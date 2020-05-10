@@ -14,5 +14,9 @@ int main() {
 
     // bthread tests
     fprintf(stdout, "\nSTART bthread tests\n");
-    test_bthread_create();
+    test_bthread_simple();
+    test_bthread_cancel();
+    test_bthread_yield();
+
+    test_bthread_sleep();
 }
