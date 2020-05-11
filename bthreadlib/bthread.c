@@ -16,6 +16,8 @@
 #define save_context(CONTEXT) sigsetjmp(CONTEXT, 1)
 #define restore_context(CONTEXT) siglongjmp(CONTEXT, 1)
 
+void bthread_block_timer_signal();
+
 // 2 ms
 #define QUANTUM_USEC 2000
 void error(char* error_message) {
@@ -39,16 +41,7 @@ static void bthread_setup_timer() {
     static bool initialized = false;
 
     if (!initialized) {
-
-//        struct sigaction action;            // Allocate struct on stack.
-//        action.sa_handler = bthread_yield;  // Set the function pointer our handler.
-//        action.sa_flags = 0;                // Use no special flags.
-//        sigfillset(&action.sa_mask);        // Again, full set of signals blocked while this
-//                                            // handler runs
-//
-//        // Register to handle SIGALRM signals.
-//        check(sigaction(SIGALRM, &action, NULL), "Failed to setup signal handler");
-
+        bthread_block_timer_signal();
         signal(SIGALRM, (void (*)()) bthread_yield);
         //signal(SIGVTALRM, (void (*)()) bthread_yield);
 
@@ -196,9 +189,7 @@ int bthread_join(bthread_t bthread, void **retval) {
 
     save_context(scheduler->context);
 
-    bthread_block_timer_signal();
     if (bthread_check_if_zombie(bthread, retval)) {
-        bthread_unblock_timer_signal();
         return 0;
     }
 
@@ -217,8 +208,7 @@ int bthread_join(bthread_t bthread, void **retval) {
 
 
     if (tp->stack) {
-        bthread_unblock_timer_signal();
-        // stack already initialized
+        // stack already initialized, come back to yield method
         restore_context(tp->context);
     } else {
         // setup a new stack (allocating memory on the heap)
@@ -240,7 +230,6 @@ int bthread_join(bthread_t bthread, void **retval) {
         // call the thread's routine (tp->body: void* f(void*) )
         bthread_exit(tp->body(tp->arg));
     }
-    bthread_unblock_timer_signal();
     return 0;
 }
 
@@ -292,12 +281,7 @@ void bthread_sleep(double ms) {
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
     tp->state = __BTHREAD_SLEEPING;
     tp->wake_up_time = get_current_time_millis() + ms;
-    if (!save_context(tp->context)) {
-//        bthread_printf( "SLEEP: tid: %lu  state: %d\n", tp->tid, tp->state);
-        // restore scheduler context: siglongjmp
-        bthread_block_timer_signal();
-        restore_context(scheduler->context);
-    }
+    bthread_yield();
 
     bthread_unblock_timer_signal();
 }

@@ -17,6 +17,5 @@ int main() {
     test_bthread_simple();
     test_bthread_cancel();
     test_bthread_yield();
-
     test_bthread_sleep();
 }

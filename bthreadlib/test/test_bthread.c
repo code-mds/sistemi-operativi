@@ -69,6 +69,7 @@ void* my_routine_cancel(void* param) {
     int loops = (int)param;
     int i=0;
     for (; i < loops; ++i) {
+        fprintf(stdout, "thread [%d]  -> %d\n", loops, i);
         bthread_testcancel();
     }
 
@@ -90,7 +91,7 @@ void* my_routine_yield(void* param) {
     int loops = (int)param;
     int i=0;
     for (; i < loops; ++i) {
-//        fprintf(stdout, "thread [%d]  -> %d\n", loops, i);
+        fprintf(stdout, "thread [%d]  -> %d\n", loops, i);
         bthread_yield();
     }
 
