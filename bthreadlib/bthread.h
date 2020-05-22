@@ -7,6 +7,13 @@
 
 typedef unsigned long int bthread_t;
 
+typedef enum {
+    __BTHREAD_ROUND_ROBIN = 0,
+    __BTHREAD_PRIORITY = 1,
+    __BTHREAD_RANDOM = 2,
+    __BTHREAD_LOTTERY = 3
+} bthread_scheduling_policy;
+
 typedef struct {
 } bthread_attr_t;
 
@@ -17,7 +24,7 @@ int bthread_create(bthread_t *bthread,
                     const bthread_attr_t *attr,
                     void *(*start_routine) (void *),
                     void *arg);
-int bthread_join(bthread_t bthread, void **retval);
+int bthread_join(bthread_t bthread, void **retval, bthread_scheduling_policy policy);
 void bthread_yield();
 void bthread_exit(void *retval);
 void bthread_sleep(double ms);

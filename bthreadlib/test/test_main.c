@@ -13,9 +13,8 @@ int main() {
     test_tqueue_many_elements();
 
     // bthread tests
-    fprintf(stdout, "\nSTART bthread tests\n");
-    test_bthread_simple();
-    test_bthread_cancel();
-    test_bthread_yield();
-    test_bthread_sleep();
+    test_round_robin_scheduling();
+    test_random_scheduling();
+    test_priority_scheduling();
+    test_lottery_scheduling();
 }

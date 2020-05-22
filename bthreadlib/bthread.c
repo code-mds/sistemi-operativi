@@ -178,21 +178,41 @@ int bthread_create(bthread_t *bthread, const bthread_attr_t *attr, void *(*start
     return 0;
 }
 
-void round_robin() {
+void policy_round_robin() {
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     // update current_item with the next item
     scheduler->current_item = tqueue_at_offset(scheduler->current_item, 1);
+}
+
+void policy_random() {
+    volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
+    ulong size = tqueue_size(scheduler->current_item);
+    ulong offset = (double)random() / RAND_MAX * size;
+    // update current_item with the next item
+    scheduler->current_item = tqueue_at_offset(scheduler->current_item, offset);
 }
 
 /*
  *  Waits for the thread specified by bthread to terminate (i.e. __BTHREAD_ZOMBIE state), by
  *  scheduling all the threads. In the following we will discuss some details about this procedure.
  */
-int bthread_join(bthread_t bthread, void **retval) {
+int bthread_join(bthread_t bthread, void **retval, bthread_scheduling_policy schedulingPolicy) {
     bthread_setup_timer();
 
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     scheduler->current_item = scheduler->queue;
+
+    switch (schedulingPolicy) {
+        case __BTHREAD_RANDOM:
+            scheduler->scheduling_routine = policy_random;
+            break;
+        case __BTHREAD_PRIORITY:
+        case __BTHREAD_LOTTERY:
+        case __BTHREAD_ROUND_ROBIN:
+        default:
+            scheduler->scheduling_routine = policy_round_robin;
+            break;
+    }
 
     save_context(scheduler->context);
 
@@ -202,8 +222,7 @@ int bthread_join(bthread_t bthread, void **retval) {
 
     __bthread_private* tp;
     do {
-        if(scheduler->scheduling_routine == NULL)
-            round_robin();
+        scheduler->scheduling_routine(NULL);
 
         tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
 //        printf( "JOIN: tid: %d  state: %d\n", tp->tid, tp->state);
