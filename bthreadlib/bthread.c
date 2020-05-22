@@ -198,7 +198,7 @@ int bthread_join(bthread_t bthread, void **retval) {
         // update current_item with the next item
         scheduler->current_item = tqueue_at_offset(scheduler->current_item, 1);
         tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
-//        bthread_printf( "JOIN: tid: %d  state: %d\n", tp->tid, tp->state);
+//        printf( "JOIN: tid: %d  state: %d\n", tp->tid, tp->state);
         // check sleeping threads
         double now = get_current_time_millis();
         if(tp->state == __BTHREAD_SLEEPING && now > tp->wake_up_time)
@@ -247,7 +247,7 @@ void bthread_yield() {
     // save current thread context: sigsetjmp
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
     if (!save_context(tp->context)) {
-//        bthread_printf( "YIELD: tid: %lu  state: %d\n", tp->tid, tp->state);
+//        printf( "YIELD: tid: %lu  state: %d\n", tp->tid, tp->state);
         // restore scheduler context: siglongjmp
         bthread_block_timer_signal();
         restore_context(scheduler->context);
@@ -293,7 +293,7 @@ void bthread_cancel(bthread_t bthread) {
     if(view != NULL) {
         __bthread_private *tp = (__bthread_private *) tqueue_get_data(view);
         tp->cancel_req = 1;
-//        bthread_printf( "bthread_cancel: tid: %lu  state: %d\n", tp->tid, tp->state);
+//        printf( "bthread_cancel: tid: %lu  state: %d\n", tp->tid, tp->state);
     }
 
     bthread_unblock_timer_signal();
@@ -305,13 +305,16 @@ void bthread_testcancel() {
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
     if(tp->cancel_req) {
-//        bthread_printf( "bthread_testcancel: tid: %lu  state: %d\n", tp->tid, tp->state);
+//      printf( "bthread_testcancel: tid: %lu  state: %d\n", tp->tid, tp->state);
         bthread_exit((void *) -1);
     }
 
     bthread_unblock_timer_signal();
 }
 
+/**
+ * used in user threads
+ */
 void bthread_printf(const char* format, ...) // requires stdlib.h and stdarg.h
 {
     bthread_block_timer_signal();
