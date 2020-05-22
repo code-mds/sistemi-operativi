@@ -43,6 +43,13 @@ __bthread_scheduler_private* bthread_get_scheduler();
 static int bthread_check_if_zombie(bthread_t bthread, void **retval);
 static TQueue bthread_get_queue_at(bthread_t bthread);
 void bthread_cleanup();
+
+void bthread_block_timer_signal();
+void set_timer(int priority);
+void policy_priority();
+void policy_random();
+void policy_round_robin();
+
 // Private
 
 #endif //TEST_C_BTHREAD_PRIVATE_H

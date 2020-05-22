@@ -14,7 +14,14 @@ typedef enum {
     __BTHREAD_LOTTERY = 3
 } bthread_scheduling_policy;
 
+typedef enum {
+    __BTHREAD_PRIORITY_LOW = 1,
+    __BTHREAD_PRIORITY_MED = 2,
+    __BTHREAD_PRIORITY_HI = 3
+} bthread_priority;
+
 typedef struct {
+    bthread_priority priority;
 } bthread_attr_t;
 
 typedef void *(*bthread_routine) (void *);

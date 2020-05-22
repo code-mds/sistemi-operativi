@@ -16,8 +16,6 @@
 #define save_context(CONTEXT) sigsetjmp(CONTEXT, 1)
 #define restore_context(CONTEXT) siglongjmp(CONTEXT, 1)
 
-void bthread_block_timer_signal();
-
 // 2 ms
 #define QUANTUM_USEC 2000
 void error(char* error_message) {
@@ -42,36 +40,35 @@ static void bthread_setup_timer() {
 
     if (!initialized) {
         bthread_block_timer_signal();
-        signal(SIGALRM, (void (*)()) bthread_yield);
-        //signal(SIGVTALRM, (void (*)()) bthread_yield);
-
-        struct itimerval time;
-        time.it_interval.tv_sec = 0;                // seconds
-        time.it_interval.tv_usec = QUANTUM_USEC;    // microseconds
-        time.it_value.tv_sec = 0;
-        time.it_value.tv_usec = QUANTUM_USEC;
+        signal(SIGALRM, (void (*)()) bthread_yield);    // (alternative SIGVTALRM)
         initialized = true;
-
-        // Now start the timer.
-        // ITIMER_REAL means base the timer on real ellapsed
-//        setitimer(ITIMER_VIRTUAL, &time, NULL);
-        check(setitimer(ITIMER_REAL, &time, NULL), "unable to set timer");
+        set_timer(__BTHREAD_PRIORITY_LOW);
     }
+}
+
+void set_timer(int priority) {
+    struct itimerval time;
+    time.it_interval.tv_sec = 0;                // seconds
+    time.it_interval.tv_usec = QUANTUM_USEC;    // microseconds
+    time.it_value.tv_sec = 0;
+    time.it_value.tv_usec = QUANTUM_USEC;
+
+    // Now start the timer.
+    // ITIMER_REAL means base the timer on real ellapsed (alternative ITIMER_VIRTUAL)
+    check(setitimer(ITIMER_REAL, &time, NULL), "unable to set timer");
 }
 
 void bthread_block_timer_signal(){
     sigset_t signalset;
     sigemptyset(&signalset);
-//    sigaddset(&signalset,  SIGVTALRM);
-    sigaddset(&signalset,  SIGALRM);
+    sigaddset(&signalset,  SIGALRM);    // (alternative SIGVTALRM)
     check(sigprocmask(SIG_BLOCK, &signalset, NULL), "unable to block SIGALRM");
 }
 
 void bthread_unblock_timer_signal() {
     sigset_t signalset;
     sigemptyset(&signalset);
-//    sigaddset(&signalset, SIGVTALRM);
-    sigaddset(&signalset,  SIGALRM);
+    sigaddset(&signalset,  SIGALRM);    // (alternative SIGVTALRM)
     check(sigprocmask(SIG_UNBLOCK, &signalset, NULL), "unable to unblock SIGALRM");
 }
 
@@ -172,24 +169,10 @@ int bthread_create(bthread_t *bthread, const bthread_attr_t *attr, void *(*start
     thread->stack = NULL;
     thread->wake_up_time = 0;
     thread->cancel_req = 0;
-//    thread->attr = *attr;
+    thread->attr = *attr;
     thread->arg = arg;
 
     return 0;
-}
-
-void policy_round_robin() {
-    volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
-    // update current_item with the next item
-    scheduler->current_item = tqueue_at_offset(scheduler->current_item, 1);
-}
-
-void policy_random() {
-    volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
-    ulong size = tqueue_size(scheduler->current_item);
-    ulong offset = (double)random() / RAND_MAX * size;
-    // update current_item with the next item
-    scheduler->current_item = tqueue_at_offset(scheduler->current_item, offset);
 }
 
 /*
@@ -207,6 +190,8 @@ int bthread_join(bthread_t bthread, void **retval, bthread_scheduling_policy sch
             scheduler->scheduling_routine = policy_random;
             break;
         case __BTHREAD_PRIORITY:
+            scheduler->scheduling_routine = policy_priority;
+            break;
         case __BTHREAD_LOTTERY:
         case __BTHREAD_ROUND_ROBIN:
         default:
@@ -352,4 +337,37 @@ void bthread_printf(const char* format, ...) // requires stdlib.h and stdarg.h
     va_end (args);
 
     bthread_unblock_timer_signal();
+}
+
+
+/*
+ * ROUND ROBIN Scheduling Policy
+ */
+void policy_round_robin() {
+    volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
+    // update current_item with the next item
+    scheduler->current_item = tqueue_at_offset(scheduler->current_item, 1);
+}
+
+/*
+ * RANDOM Scheduling Policy
+ */
+void policy_random() {
+    volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
+    ulong size = tqueue_size(scheduler->current_item);
+    ulong offset = (double)random() / RAND_MAX * size;
+    // update current_item with the next item
+    scheduler->current_item = tqueue_at_offset(scheduler->current_item, offset);
+}
+
+/*
+ * PRIORITY Scheduling Policy
+ */
+void policy_priority() {
+//TODO
+    volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
+    // update current_item with the next item
+    scheduler->current_item = tqueue_at_offset(scheduler->current_item, 1);
+    __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
+    set_timer(tp->attr.priority);
 }

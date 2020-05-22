@@ -8,7 +8,9 @@
 #define THREADS 3
 bthread_scheduling_policy _schedulingPolicy = __BTHREAD_ROUND_ROBIN;
 
-
+/*
+ * ROUND ROBIN scheduling policy
+ */
 void test_round_robin_scheduling() {
     fprintf(stdout, "\n*******************************\n");
     fprintf(stdout, "START bthread ROUND ROBIN scheduling\n");
@@ -16,6 +18,9 @@ void test_round_robin_scheduling() {
     start_test(__BTHREAD_ROUND_ROBIN);
 }
 
+/*
+ * RANDOM scheduling policy
+ */
 void test_random_scheduling() {
     fprintf(stdout, "\n*******************************\n");
     fprintf(stdout, "START bthread RANDOM scheduling\n");
@@ -23,6 +28,9 @@ void test_random_scheduling() {
     start_test(__BTHREAD_RANDOM);
 }
 
+/*
+ * PRIORITY scheduling policy
+ */
 void test_priority_scheduling() {
     fprintf(stdout, "\n*******************************\n");
     fprintf(stdout, "START bthread PRIORITY scheduling\n");
@@ -30,6 +38,9 @@ void test_priority_scheduling() {
     start_test(__BTHREAD_PRIORITY);
 }
 
+/*
+ * LOTTERY scheduling policy
+ */
 void test_lottery_scheduling() {
     fprintf(stdout, "\n*******************************\n");
     fprintf(stdout, "START bthread LOTTERY scheduling\n");
@@ -37,6 +48,9 @@ void test_lottery_scheduling() {
     start_test(__BTHREAD_LOTTERY);
 }
 
+/*
+ * set the policy and invoke the base tests
+ */
 void start_test(bthread_scheduling_policy schedulingPolicy) {
     _schedulingPolicy = schedulingPolicy;
     test_bthread_simple();
@@ -45,10 +59,15 @@ void start_test(bthread_scheduling_policy schedulingPolicy) {
     test_bthread_sleep();
 }
 
+/*
+ * Base method for specialized tests
+ */
 void test_bthread_base(void *(*start_routine)(void *), int *loops) {
     bthread_t tid[THREADS];
     for (int i = 0; i < THREADS; ++i) {
-        bthread_create(&tid[i], NULL, start_routine, (void*)loops[i]);
+        bthread_attr_t attr;
+        attr.priority = __BTHREAD_PRIORITY_LOW + i;
+        bthread_create(&tid[i], &attr, start_routine, (void*)loops[i]);
         fprintf(stdout, "%i) thread_%lu created, # of loops: %d \n", i, tid[i], loops[i]);
     }
 
@@ -65,7 +84,9 @@ void test_bthread_base(void *(*start_routine)(void *), int *loops) {
     fprintf(stdout, "test PASSED\n");
 }
 
-/* simple test */
+/*
+ * simple routine
+ */
 void* my_routine(void* param) {
     int loops = (int)param;
     int i=0, c;
@@ -83,7 +104,9 @@ void test_bthread_simple() {
     test_bthread_base(my_routine, loops);
 }
 
-/* sleep test */
+/*
+ * routine for sleep test
+ */
 void* my_routine_sleep(void* param) {
     int loops = (int)param;
     int i=0, c;
@@ -101,7 +124,9 @@ void test_bthread_sleep() {
     test_bthread_base(my_routine_sleep, loops);
 }
 
-/* cancel test */
+/*
+ * routine for cancel test
+ */
 void* my_routine_cancel(void* param) {
     int loops = (int)param;
     int i=0;
@@ -123,7 +148,9 @@ void test_bthread_cancel() {
     test_bthread_base(my_routine_cancel, loops);
 }
 
-/* yield test */
+/*
+ * routine for yield test
+ */
 void* my_routine_yield(void* param) {
     int loops = (int)param;
     int i=0;
@@ -134,6 +161,7 @@ void* my_routine_yield(void* param) {
 
     return (void*)i;
 }
+
 void test_bthread_yield() {
     fprintf(stdout, "** test_bthread_yield **\n");
     int loops[THREADS] = { 20, 10, 8 };
