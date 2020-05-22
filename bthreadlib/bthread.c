@@ -151,6 +151,7 @@ __bthread_scheduler_private *bthread_get_scheduler() {
         scheduler->current_item = NULL;
         scheduler->queue = NULL;
         scheduler->current_tid = 0;
+        scheduler->scheduling_routine = NULL;
     }
 
     return scheduler;
@@ -177,6 +178,12 @@ int bthread_create(bthread_t *bthread, const bthread_attr_t *attr, void *(*start
     return 0;
 }
 
+void round_robin() {
+    volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
+    // update current_item with the next item
+    scheduler->current_item = tqueue_at_offset(scheduler->current_item, 1);
+}
+
 /*
  *  Waits for the thread specified by bthread to terminate (i.e. __BTHREAD_ZOMBIE state), by
  *  scheduling all the threads. In the following we will discuss some details about this procedure.
@@ -195,8 +202,9 @@ int bthread_join(bthread_t bthread, void **retval) {
 
     __bthread_private* tp;
     do {
-        // update current_item with the next item
-        scheduler->current_item = tqueue_at_offset(scheduler->current_item, 1);
+        if(scheduler->scheduling_routine == NULL)
+            round_robin();
+
         tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
 //        printf( "JOIN: tid: %d  state: %d\n", tp->tid, tp->state);
         // check sleeping threads

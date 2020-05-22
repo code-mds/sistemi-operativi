@@ -11,6 +11,7 @@ typedef struct {
 } bthread_attr_t;
 
 typedef void *(*bthread_routine) (void *);
+typedef void *(*bthread_scheduling_routine) (void *);
 
 int bthread_create(bthread_t *bthread,
                     const bthread_attr_t *attr,

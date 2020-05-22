@@ -35,6 +35,7 @@ typedef struct {
     TQueue current_item;
     jmp_buf context;
     bthread_t current_tid;
+    bthread_scheduling_routine scheduling_routine;
 } __bthread_scheduler_private;
 
 // Private methods
