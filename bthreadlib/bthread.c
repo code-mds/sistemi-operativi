@@ -47,11 +47,12 @@ static void bthread_setup_timer() {
 }
 
 void set_timer(int priority) {
+
     struct itimerval time;
     time.it_interval.tv_sec = 0;                // seconds
-    time.it_interval.tv_usec = QUANTUM_USEC;    // microseconds
-    time.it_value.tv_sec = 0;
-    time.it_value.tv_usec = QUANTUM_USEC;
+    time.it_interval.tv_usec = QUANTUM_USEC * priority;    // microseconds
+    time.it_value.tv_sec = time.it_interval.tv_sec;
+    time.it_value.tv_usec = time.it_interval.tv_usec;
 
     // Now start the timer.
     // ITIMER_REAL means base the timer on real ellapsed (alternative ITIMER_VIRTUAL)
@@ -193,6 +194,8 @@ int bthread_join(bthread_t bthread, void **retval, bthread_scheduling_policy sch
             scheduler->scheduling_routine = policy_priority;
             break;
         case __BTHREAD_LOTTERY:
+            scheduler->scheduling_routine = policy_lottery;
+            break;
         case __BTHREAD_ROUND_ROBIN:
         default:
             scheduler->scheduling_routine = policy_round_robin;
@@ -356,7 +359,7 @@ void policy_random() {
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     ulong size = tqueue_size(scheduler->current_item);
     ulong offset = (double)random() / RAND_MAX * size;
-    // update current_item with the next item
+    // update current_item with the next random item
     scheduler->current_item = tqueue_at_offset(scheduler->current_item, offset);
 }
 
@@ -364,10 +367,27 @@ void policy_random() {
  * PRIORITY Scheduling Policy
  */
 void policy_priority() {
-//TODO
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     // update current_item with the next item
     scheduler->current_item = tqueue_at_offset(scheduler->current_item, 1);
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
+    // change timer quantum proportional to the thread priority
     set_timer(tp->attr.priority);
+}
+
+/*
+ * LOTTERY Scheduling Policy
+ */
+void policy_lottery() {
+    volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
+    ulong size = tqueue_size(scheduler->current_item);
+    int tickets = 0;
+    for (int i = 1; i <= size; ++i) {
+        TQueue item = tqueue_at_offset(scheduler->current_item, i);
+        __bthread_private* tp = (__bthread_private*) tqueue_get_data(item);
+        tickets += tp->attr.priority;
+    }
+    ulong offset = (double)random() / RAND_MAX * tickets;
+    // update current_item with the next weighted random item
+    scheduler->current_item = tqueue_at_offset(scheduler->current_item, offset);
 }

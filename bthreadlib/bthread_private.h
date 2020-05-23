@@ -49,6 +49,7 @@ void set_timer(int priority);
 void policy_priority();
 void policy_random();
 void policy_round_robin();
+void policy_lottery();
 
 // Private
 

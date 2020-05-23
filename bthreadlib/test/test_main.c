@@ -16,5 +16,5 @@ int main() {
     test_round_robin_scheduling();
     test_random_scheduling();
     test_priority_scheduling();
-//    test_lottery_scheduling();
+    test_lottery_scheduling();
 }
