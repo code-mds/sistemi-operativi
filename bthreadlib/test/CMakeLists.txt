@@ -6,6 +6,6 @@ set(CMAKE_C_STANDARD 99)
 
 project(bthreadlib_test)
 
-set(SOURCE_FILES test_main.c test_bthread.c test_tqueue.c ../tqueue.c ../bthread.c)
+set(SOURCE_FILES ../tqueue.c ../bthread.c ../tmutex.c ../tcondition.c ../tsemaphore.c test_main.c test_bthread.c test_tqueue.c test_criticalsection.c)
 
 add_executable(bthreadlib_test ${SOURCE_FILES})

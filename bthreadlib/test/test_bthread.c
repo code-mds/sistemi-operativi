@@ -6,7 +6,7 @@
 #include "test_bthread.h"
 
 #define THREADS 3
-bthread_scheduling_policy _schedulingPolicy = __BTHREAD_ROUND_ROBIN;
+static bthread_scheduling_policy _schedulingPolicy = __BTHREAD_ROUND_ROBIN;
 
 /*
  * ROUND ROBIN scheduling policy
@@ -67,7 +67,7 @@ void test_bthread_base(void *(*start_routine)(void *), int *loops) {
     for (int i = 0; i < THREADS; ++i) {
         bthread_attr_t attr;
         attr.priority = __BTHREAD_PRIORITY_LOW + i;
-        bthread_create(&tid[i], &attr, start_routine, (void*)loops[i]);
+        bthread_create(&tid[i], &attr, start_routine, &loops[i]);
         fprintf(stdout, "%i) thread_%lu created, # of loops: %d \n", i, tid[i], loops[i]);
     }
 
@@ -82,13 +82,14 @@ void test_bthread_base(void *(*start_routine)(void *), int *loops) {
     }
 
     fprintf(stdout, "test PASSED\n");
+    bthread_cleanup();
 }
 
 /*
  * simple routine
  */
 void* my_routine(void* param) {
-    int loops = (int)param;
+    int loops = *(int*)param;
     int i=0, c;
     for (; i < loops; ++i) {
         c=i;
@@ -108,7 +109,7 @@ void test_bthread_simple() {
  * routine for sleep test
  */
 void* my_routine_sleep(void* param) {
-    int loops = (int)param;
+    int loops = *(int*)param;
     int i=0, c;
     for (; i < loops; ++i) {
         bthread_sleep(100);
@@ -128,7 +129,7 @@ void test_bthread_sleep() {
  * routine for cancel test
  */
 void* my_routine_cancel(void* param) {
-    int loops = (int)param;
+    int loops = *(int*)param;
     int i=0;
     for (; i < loops; ++i) {
         fprintf(stdout, "thread [%d]  -> %d\n", loops, i);
@@ -152,7 +153,7 @@ void test_bthread_cancel() {
  * routine for yield test
  */
 void* my_routine_yield(void* param) {
-    int loops = (int)param;
+    int loops = *(int*)param;
     int i=0;
     for (; i < loops; ++i) {
         fprintf(stdout, "thread [%d]  -> %d\n", loops, i);

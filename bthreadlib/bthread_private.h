@@ -43,15 +43,14 @@ typedef struct {
 __bthread_scheduler_private* bthread_get_scheduler();
 static int bthread_check_if_zombie(bthread_t bthread, void **retval);
 static TQueue bthread_get_queue_at(bthread_t bthread);
-void bthread_cleanup();
 
 void bthread_block_timer_signal();
 void bthread_unblock_timer_signal();
 
 void set_timer();
-void policy_priority();
-void policy_random();
-void policy_round_robin();
-void policy_lottery();
+void* policy_priority(void*);
+void* policy_random(void*);
+void* policy_round_robin(void*);
+void* policy_lottery(void*);
 
 #endif //BTHREAD_PRIVATE_H

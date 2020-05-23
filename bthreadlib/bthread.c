@@ -15,6 +15,7 @@
 #define STACK_SIZE  100000
 #define save_context(CONTEXT) sigsetjmp(CONTEXT, 1)
 #define restore_context(CONTEXT) siglongjmp(CONTEXT, 1)
+static bool timer_initialized = false;
 
 // 2 ms
 #define QUANTUM_USEC 2000
@@ -36,12 +37,10 @@ double get_current_time_millis()
 }
 
 static void bthread_setup_timer() {
-    static bool initialized = false;
-
-    if (!initialized) {
+    if (!timer_initialized) {
         bthread_block_timer_signal();
         signal(SIGALRM, (void (*)()) bthread_yield);    // (alternative SIGVTALRM)
-        initialized = true;
+        timer_initialized = true;
         set_timer();
     }
 }
@@ -132,7 +131,11 @@ static int bthread_check_if_zombie(bthread_t bthread, void **retval) {
  * clean queue for unit test
  */
 void bthread_cleanup() {
-    //TODO svuotare la coda
+    bthread_block_timer_signal();
+    timer_initialized = false;
+    volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
+    while(tqueue_size(scheduler->queue))
+        tqueue_pop(&scheduler->queue);
 }
 
 /*
@@ -170,7 +173,11 @@ int bthread_create(bthread_t *bthread, const bthread_attr_t *attr, void *(*start
     thread->stack = NULL;
     thread->wake_up_time = 0;
     thread->cancel_req = 0;
-    thread->attr = *attr;
+    if(attr)
+        thread->attr = *attr;
+    else
+        thread->attr.priority = __BTHREAD_PRIORITY_LOW;
+
     thread->arg = arg;
 
     return 0;
@@ -346,27 +353,29 @@ void bthread_printf(const char* format, ...) // requires stdlib.h and stdarg.h
 /*
  * ROUND ROBIN Scheduling Policy
  */
-void policy_round_robin() {
+void* policy_round_robin(void* param) {
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     // update current_item with the next item
     scheduler->current_item = tqueue_at_offset(scheduler->current_item, 1);
+    return NULL;
 }
 
 /*
  * RANDOM Scheduling Policy
  */
-void policy_random() {
+void* policy_random(void* param) {
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     ulong size = tqueue_size(scheduler->current_item);
     ulong offset = (double)random() / RAND_MAX * size;
     // update current_item with the next random item
     scheduler->current_item = tqueue_at_offset(scheduler->current_item, offset);
+    return NULL;
 }
 
 /*
  * PRIORITY Scheduling Policy
  */
-void policy_priority() {
+void* policy_priority(void* param) {
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     if(scheduler->reserved_quantum > 0) {
         // consume a quantum and update the reserved
@@ -379,15 +388,16 @@ void policy_priority() {
         // set reserved quantum (0 for LOW, 1 for MID, 2 for HI)
         scheduler->reserved_quantum = tp->attr.priority - 1;
     }
+    return NULL;
 }
 
 /*
  * LOTTERY Scheduling Policy
  */
-void policy_lottery() {
+void* policy_lottery(void* param) {
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     ulong size = tqueue_size(scheduler->current_item);
-    int tickets = 0;
+    unsigned int tickets = 0;
     for (int i = 1; i <= size; ++i) {
         TQueue item = tqueue_at_offset(scheduler->current_item, i);
         __bthread_private* tp = (__bthread_private*) tqueue_get_data(item);
@@ -396,4 +406,5 @@ void policy_lottery() {
     ulong offset = (double)random() / RAND_MAX * tickets;
     // update current_item with the next weighted random item
     scheduler->current_item = tqueue_at_offset(scheduler->current_item, offset);
+    return NULL;
 }

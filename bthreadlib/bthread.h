@@ -38,4 +38,6 @@ void bthread_sleep(double ms);
 void bthread_cancel(bthread_t bthread);
 void bthread_testcancel();
 void bthread_printf(const char* format, ...);
+void bthread_cleanup();
+
 #endif //BTHREAD_H
