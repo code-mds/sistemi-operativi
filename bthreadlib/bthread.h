@@ -2,8 +2,8 @@
 // Created by massi on 19.03.2020.
 //
 
-#ifndef TEST_C_BTHREAD_H
-#define TEST_C_BTHREAD_H
+#ifndef BTHREAD_H
+#define BTHREAD_H
 
 typedef unsigned long int bthread_t;
 
@@ -38,4 +38,4 @@ void bthread_sleep(double ms);
 void bthread_cancel(bthread_t bthread);
 void bthread_testcancel();
 void bthread_printf(const char* format, ...);
-#endif //TEST_C_BTHREAD_H
+#endif //BTHREAD_H

@@ -2,8 +2,8 @@
 // Created by massi on 28.03.2020.
 //
 
-#ifndef TEST_C_TEST_BTHREAD_H
-#define TEST_C_TEST_BTHREAD_H
+#ifndef TEST_BTHREAD_H
+#define TEST_BTHREAD_H
 
     #include "../bthread.h"
 
@@ -18,4 +18,4 @@
     void test_bthread_cancel();
     void test_bthread_yield();
 
-#endif //TEST_C_TEST_BTHREAD_H
+#endif //TEST_BTHREAD_H

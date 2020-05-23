@@ -2,8 +2,8 @@
 // Created by massi on 19.03.2020.
 //
 
-#ifndef TEST_C_BTHREAD_PRIVATE_H
-#define TEST_C_BTHREAD_PRIVATE_H
+#ifndef BTHREAD_PRIVATE_H
+#define BTHREAD_PRIVATE_H
 
 #include <setjmp.h>
 #include "bthread.h"
@@ -45,12 +45,12 @@ static TQueue bthread_get_queue_at(bthread_t bthread);
 void bthread_cleanup();
 
 void bthread_block_timer_signal();
+void bthread_unblock_timer_signal();
+
 void set_timer(int priority);
 void policy_priority();
 void policy_random();
 void policy_round_robin();
 void policy_lottery();
 
-// Private
-
-#endif //TEST_C_BTHREAD_PRIVATE_H
+#endif //BTHREAD_PRIVATE_H

@@ -2,8 +2,8 @@
 // Created by massi on 19.03.2020.
 //
 
-#ifndef TEST_C_TQUEUE_H
-#define TEST_C_TQUEUE_H
+#ifndef TQUEUE_H
+#define TQUEUE_H
 
 struct TQueueNode;
 typedef struct TQueueNode* TQueue;
@@ -24,4 +24,4 @@ TQueue tqueue_at_offset(TQueue q, unsigned long int offset);
 void* tqueue_get_data(TQueue q);
 
 
-#endif //TEST_C_TQUEUE_H
+#endif //TQUEUE_H
