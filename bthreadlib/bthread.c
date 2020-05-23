@@ -42,15 +42,14 @@ static void bthread_setup_timer() {
         bthread_block_timer_signal();
         signal(SIGALRM, (void (*)()) bthread_yield);    // (alternative SIGVTALRM)
         initialized = true;
-        set_timer(__BTHREAD_PRIORITY_LOW);
+        set_timer();
     }
 }
 
-void set_timer(int priority) {
-
+void set_timer() {
     struct itimerval time;
     time.it_interval.tv_sec = 0;                // seconds
-    time.it_interval.tv_usec = QUANTUM_USEC * priority;    // microseconds
+    time.it_interval.tv_usec = QUANTUM_USEC;    // microseconds
     time.it_value.tv_sec = time.it_interval.tv_sec;
     time.it_value.tv_usec = time.it_interval.tv_usec;
 
@@ -150,6 +149,7 @@ __bthread_scheduler_private *bthread_get_scheduler() {
         scheduler->queue = NULL;
         scheduler->current_tid = 0;
         scheduler->scheduling_routine = NULL;
+        scheduler->reserved_quantum = 1;
     }
 
     return scheduler;
@@ -368,11 +368,17 @@ void policy_random() {
  */
 void policy_priority() {
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
-    // update current_item with the next item
-    scheduler->current_item = tqueue_at_offset(scheduler->current_item, 1);
-    __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
-    // change timer quantum proportional to the thread priority
-    set_timer(tp->attr.priority);
+    if(scheduler->reserved_quantum > 0) {
+        // consume a quantum and update the reserved
+        scheduler->reserved_quantum--;
+//        printf("reserved quantum %d\n", scheduler->reserved_quantum);
+    } else {
+        // update current_item with the next item
+        scheduler->current_item = tqueue_at_offset(scheduler->current_item, 1);
+        __bthread_private *tp = (__bthread_private *) tqueue_get_data(scheduler->current_item);
+        // set reserved quantum (0 for LOW, 1 for MID, 2 for HI)
+        scheduler->reserved_quantum = tp->attr.priority - 1;
+    }
 }
 
 /*

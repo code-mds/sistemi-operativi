@@ -36,6 +36,7 @@ typedef struct {
     jmp_buf context;
     bthread_t current_tid;
     bthread_scheduling_routine scheduling_routine;
+    unsigned int reserved_quantum;
 } __bthread_scheduler_private;
 
 // Private methods
@@ -47,7 +48,7 @@ void bthread_cleanup();
 void bthread_block_timer_signal();
 void bthread_unblock_timer_signal();
 
-void set_timer(int priority);
+void set_timer();
 void policy_priority();
 void policy_random();
 void policy_round_robin();
