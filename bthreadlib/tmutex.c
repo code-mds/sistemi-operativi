@@ -76,7 +76,7 @@ int bthread_mutex_trylock(bthread_mutex_t* m)
 
 /*
  * When a thread release the mutex, we assign it to the next thread waiting for the mutex
- * The thread that receives the mutex is set back to READY state and waked up
+ * The thread that receives the mutex is set back to READY state and woken up
  */
 int bthread_mutex_unlock(bthread_mutex_t* m)
 {

@@ -21,6 +21,8 @@ void test_criticalsection() {
     fprintf(stdout, "START critical section tests\n");
     fprintf(stdout, "*******************************\n");
     // critical section tests
+
+//    test_nomutex();
     test_mutex();
 }
 
