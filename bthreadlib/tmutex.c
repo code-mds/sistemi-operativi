@@ -48,7 +48,7 @@ int bthread_mutex_lock(bthread_mutex_t* m)
         tqueue_enqueue(&m->waiting_list, (void*)bthread);
         while(bthread->state != __BTHREAD_READY) {
             bthread_yield();
-        };
+        }
     }
 
     return 0;
