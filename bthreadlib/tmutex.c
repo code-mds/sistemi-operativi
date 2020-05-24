@@ -7,10 +7,9 @@
 #include "bthread_private.h"
 
 /**
- * Initialize a mutex
+ * Initialize a Mutex object
  * @param m the mutex to initialize
  * @param attr (ignored)
- * @return
  */
 int bthread_mutex_init(bthread_mutex_t* m, const bthread_mutexattr_t *attr)
 {
@@ -22,6 +21,7 @@ int bthread_mutex_init(bthread_mutex_t* m, const bthread_mutexattr_t *attr)
 
 int bthread_mutex_destroy(bthread_mutex_t* m)
 {
+    assert(m != NULL);
     assert(m->owner == NULL);
     assert(tqueue_size(m->waiting_list) == 0);
     return 0;

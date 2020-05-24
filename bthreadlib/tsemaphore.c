@@ -8,11 +8,10 @@
 #include "tsemaphore.h"
 
 /**
- * Initialize a semaphore
+ * Initialize a Semaphore object
  * @param m the semaphore to initialize
  * @param pshared (ignored in bthread)
  * @param value value to assign to the semaphore m
- * @return
  */
 int bthread_sem_init(bthread_sem_t *m, int pshared, int value) {
     assert(m != NULL);
@@ -23,6 +22,7 @@ int bthread_sem_init(bthread_sem_t *m, int pshared, int value) {
 }
 
 int bthread_sem_destroy(bthread_sem_t *m) {
+    assert(m != NULL);
     assert(tqueue_size(m->waiting_list) == 0);
     return 0;
 }
