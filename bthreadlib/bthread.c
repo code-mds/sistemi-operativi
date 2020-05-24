@@ -12,6 +12,12 @@
 #include "bthread.h"
 #include "bthread_private.h"
 
+#ifdef TRACING
+#define trace(...) printf (stderr, __VA_ARGS__)
+#else
+#define trace(...)
+#endif
+
 #define STACK_SIZE  100000
 #define save_context(CONTEXT) sigsetjmp(CONTEXT, 1)
 #define restore_context(CONTEXT) siglongjmp(CONTEXT, 1)
@@ -150,7 +156,7 @@ __bthread_scheduler_private *bthread_get_scheduler() {
         scheduler->current_item = NULL;
         scheduler->queue = NULL;
         scheduler->current_tid = 0;
-        scheduler->scheduling_routine = NULL;
+        scheduler->scheduling_routine = policy_round_robin;
         scheduler->reserved_quantum = 1;
     }
 
@@ -186,30 +192,13 @@ int bthread_create(bthread_t *bthread, const bthread_attr_t *attr, void *(*start
  *  Waits for the thread specified by bthread to terminate (i.e. __BTHREAD_ZOMBIE state), by
  *  scheduling all the threads. In the following we will discuss some details about this procedure.
  */
-int bthread_join(bthread_t bthread, void **retval, bthread_scheduling_policy schedulingPolicy) {
-    printf( "bthread_join tid: %d  \n", bthread);
+int bthread_join(bthread_t bthread, void **retval) {
+    trace( "bthread_join tid: %d  \n", bthread);
 
     bthread_setup_timer();
 
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     scheduler->current_item = scheduler->queue;
-
-    switch (schedulingPolicy) {
-        case __BTHREAD_RANDOM:
-            scheduler->scheduling_routine = policy_random;
-            break;
-        case __BTHREAD_PRIORITY:
-            scheduler->scheduling_routine = policy_priority;
-            break;
-        case __BTHREAD_LOTTERY:
-            scheduler->scheduling_routine = policy_lottery;
-            break;
-        case __BTHREAD_ROUND_ROBIN:
-        default:
-            scheduler->scheduling_routine = policy_round_robin;
-            break;
-    }
-
     save_context(scheduler->context);
 
     if (bthread_check_if_zombie(bthread, retval)) {
@@ -221,7 +210,7 @@ int bthread_join(bthread_t bthread, void **retval, bthread_scheduling_policy sch
         scheduler->scheduling_routine(NULL);
 
         tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
-//        printf( "JOIN: tid: %d  state: %d\n", tp->tid, tp->state);
+        trace( "JOIN: tid: %d  state: %d\n", tp->tid, tp->state);
         // check sleeping threads
         double now = get_current_time_millis();
         if(tp->state == __BTHREAD_SLEEPING && now > tp->wake_up_time)
@@ -270,7 +259,7 @@ void bthread_yield() {
     // save current thread context: sigsetjmp
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
     if (!save_context(tp->context)) {
-//        printf( "YIELD: tid: %lu  state: %d\n", tp->tid, tp->state);
+        trace( "YIELD: tid: %lu  state: %d\n", tp->tid, tp->state);
         // restore scheduler context: siglongjmp
         bthread_block_timer_signal();
         restore_context(scheduler->context);
@@ -316,7 +305,7 @@ void bthread_cancel(bthread_t bthread) {
     if(view != NULL) {
         __bthread_private *tp = (__bthread_private *) tqueue_get_data(view);
         tp->cancel_req = 1;
-//        printf( "bthread_cancel: tid: %lu  state: %d\n", tp->tid, tp->state);
+        trace( "bthread_cancel: tid: %lu  state: %d\n", tp->tid, tp->state);
     }
 
     bthread_unblock_timer_signal();
@@ -328,7 +317,7 @@ void bthread_testcancel() {
     volatile __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     __bthread_private* tp = (__bthread_private*) tqueue_get_data(scheduler->current_item);
     if(tp->cancel_req) {
-//      printf( "bthread_testcancel: tid: %lu  state: %d\n", tp->tid, tp->state);
+        trace( "bthread_testcancel: tid: %lu  state: %d\n", tp->tid, tp->state);
         bthread_exit((void *) -1);
     }
 
@@ -348,6 +337,25 @@ void bthread_printf(const char* format, ...) // requires stdlib.h and stdarg.h
     va_end (args);
 
     bthread_unblock_timer_signal();
+}
+
+void bthread_init(bthread_scheduling_policy policy) {
+    __bthread_scheduler_private* scheduler = bthread_get_scheduler();
+    switch (policy) {
+        case __BTHREAD_RANDOM:
+            scheduler->scheduling_routine = policy_random;
+            break;
+        case __BTHREAD_PRIORITY:
+            scheduler->scheduling_routine = policy_priority;
+            break;
+        case __BTHREAD_LOTTERY:
+            scheduler->scheduling_routine = policy_lottery;
+            break;
+        case __BTHREAD_ROUND_ROBIN:
+        default:
+            scheduler->scheduling_routine = policy_round_robin;
+            break;
+    }
 }
 
 

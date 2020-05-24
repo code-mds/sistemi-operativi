@@ -6,8 +6,6 @@
 #include "test_bthread.h"
 
 #define THREADS 3
-static bthread_scheduling_policy _schedulingPolicy = __BTHREAD_ROUND_ROBIN;
-
 /*
  * ROUND ROBIN scheduling policy
  */
@@ -52,7 +50,7 @@ void test_lottery_scheduling() {
  * set the policy and invoke the base tests
  */
 void start_test(bthread_scheduling_policy schedulingPolicy) {
-    _schedulingPolicy = schedulingPolicy;
+    bthread_init(schedulingPolicy);
     test_bthread_simple();
     test_bthread_cancel();
     test_bthread_yield();
@@ -74,7 +72,7 @@ void test_bthread_base(void *(*start_routine)(void *), int *loops) {
     for (int i = 0; i < THREADS; ++i) {
         int retval = -1;
         fprintf(stdout, "%d) thread_%lu join, # of loops: %d \n", i, tid[i], loops[i]);
-        bthread_join(tid[i], (void**)&retval, _schedulingPolicy);
+        bthread_join(tid[i], (void**)&retval);
         if(loops[i] != retval && retval != -1) {
             fprintf(stderr, "test FAILED %d != %d \n", loops[i], retval);
             exit(1);

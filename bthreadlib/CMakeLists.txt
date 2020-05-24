@@ -6,6 +6,6 @@ set(CMAKE_C_STANDARD 99)
 
 project(bthreadlib)
 set(SOURCE_FILES tqueue.c bthread.c bthread_private.h tmutex.c tsemaphore.c tcondition.c tbarrier.c)
-add_library(bthreadlib ${SOURCE_FILES})
+add_library(${PROJECT_NAME} ${SOURCE_FILES})
 
 

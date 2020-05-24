@@ -4,4 +4,4 @@ set(CMAKE_C_STANDARD 99)
 
 add_subdirectory(bthreadlib)
 add_subdirectory(bthreadlib/test)
-add_subdirectory(serie/lab-05)
+add_subdirectory(bthreadlib/philosophers)

@@ -27,11 +27,12 @@ typedef struct {
 typedef void *(*bthread_routine) (void *);
 typedef void *(*bthread_scheduling_routine) (void *);
 
+void bthread_init(bthread_scheduling_policy policy);
 int bthread_create(bthread_t *bthread,
                     const bthread_attr_t *attr,
                     void *(*start_routine) (void *),
                     void *arg);
-int bthread_join(bthread_t bthread, void **retval, bthread_scheduling_policy policy);
+int bthread_join(bthread_t bthread, void **retval);
 void bthread_yield();
 void bthread_exit(void *retval);
 void bthread_sleep(double ms);

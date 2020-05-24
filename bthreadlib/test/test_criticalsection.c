@@ -73,7 +73,7 @@ void test_sum(bthread_scheduling_routine thread_proc) {
 
     for (volatile int i = 0; i < NumThreads; ++i) {
         int retval = -1;
-        bthread_join(tid[i], (void**)&retval, __BTHREAD_ROUND_ROBIN);
+        bthread_join(tid[i], (void**)&retval);
     }
 
     long long expecetd_result = 0;
