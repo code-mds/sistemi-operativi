@@ -35,6 +35,8 @@ int bthread_cond_wait(bthread_cond_t *c, bthread_mutex_t *mutex) {
     // To avoid race-conditions we must execute mutex procedures atomically with the timer signal disabled.
     bthread_block_timer_signal();
 
+    //TODO FIX see producer-consumer-condition test
+
     __bthread_scheduler_private* scheduler = bthread_get_scheduler();
     volatile __bthread_private* bthread = (__bthread_private*)tqueue_get_data(scheduler->current_item);
     bthread->state = __BTHREAD_BLOCKED;
